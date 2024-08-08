@@ -4,7 +4,7 @@ from sqlalchemy import func
 
 from collections import defaultdict
 
-import models
+import models 
 import schema
 
 
@@ -23,6 +23,9 @@ def create_user(db: Session, user: schema.UserCreate, hashed_password: str):
 def get_user_by_username(db: Session, username: str):
     return db.query(models.User).filter(models.User.username == username).first()
 
+def get_user_by_id (db: Session, user_id: int):
+    return db.query(models.User).filter(models.User.id == user_id)
+
 
 def create_movie(db: Session, movie: schema.MovieCreate, user_id: int = None):
     db_movie = models.Movie(
@@ -34,12 +37,16 @@ def create_movie(db: Session, movie: schema.MovieCreate, user_id: int = None):
     db.refresh(db_movie)
     return db_movie
 
+def get_movie(db: Session, movie_id: int):
+    return db.query(models.Movie).filter(models.Movie.id == movie_id).first()
 
-def get_movie(db: Session, user_id: int = None, offset: int = 0, limit: int = 10):
+def get_all_movie(db: Session, user_id: int = None, offset: int = 0, limit: int = 10):
     # return db.query(models.Movie).filter(models.Movie.user_id == user_id).offset(offset).limit(limit).all()
-    movies = db.query(models.Movie).filter(
-        models.Movie.user_id == user_id).offset(offset).limit(limit).all()
-
+    query = db.query(models.Movie)
+    if user_id is not None:
+        query = query.filter(models.Movie.user_id == user_id)
+    movies = query.offset(offset).limit(limit).all()
+    
     movie_details = []
     for movie in movies:
         average_rating = db.query(func.avg(models.Rating.rating)).filter(
@@ -52,12 +59,42 @@ def get_movie(db: Session, user_id: int = None, offset: int = 0, limit: int = 10
             'ratings': average_rating,
             'comments': comments
         })
-
     return movie_details
 
+def update_movie(db: Session, movie_id: int, user_id: int, movie_payload: schema.MovieUpdate):
+    movie = get_movie(db, movie_id)
+    if not movie:
+        raise HTTPException(status_code=404, detail="Movie not found")
+    if movie.user_id != user_id:
+        raise HTTPException(status_code=404, detail="user not found")
+    
+    payload_dict = movie_payload.dict(exclude_unset=True)
 
-def get_all_movie(db: Session, id: int):
-    return db.query(models.Movie).filter(models.Movie.user_id == id).first()
+    for k, v in payload_dict.items():
+        setattr(movie, k, v)
+
+    db.add(movie)
+    db.commit()
+    db.refresh(movie)
+
+    return movie
+
+def delete_movie(db: Session, movie_id: int, user_id: int):
+    movie = db.query(models.Movie).filter(models.Movie.id == movie_id).first()
+    if not movie:
+        raise HTTPException(status_code=404, detail="Movie not found")
+    
+    if movie.user_id != user_id:
+        raise HTTPException(status_code=403, detail="User not allowed to delete this movie")
+    
+    db.delete(movie)
+    db.commit()
+
+    return {"message": "Movie deleted successfully"}
+
+
+# def get_all_movie(db: Session, id: int):
+#     return db.query(models.Movie).filter(models.Movie.user_id == id).first()
 
 
 def get_rating(db: Session, movie_id: int):

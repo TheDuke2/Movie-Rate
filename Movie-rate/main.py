@@ -2,11 +2,10 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from auth import authenticate_user, create_access_token, get_current_user
-import crud
+from auth import pwd_context, authenticate_user, create_access_token, get_current_user
+import  crud
 import schema
 from database import engine, Base, get_db
-from auth import pwd_context
 from typing import Optional
 
 Base.metadata.create_all(bind=engine)
@@ -44,7 +43,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
 @app.get("/movies/")
 def get_movies(db: Session = Depends(get_db), user: schema.User = Depends(get_current_user), offset: int = 0, limit: int = 10):
-    movies = crud.get_movie(
+    movies = crud.get_all_movie(
         db,
         user_id=user.id,
         offset=offset,
@@ -53,11 +52,11 @@ def get_movies(db: Session = Depends(get_db), user: schema.User = Depends(get_cu
     return {'message': 'success', 'data': movies}
 
 
-@app.get("/movies/all")
-def list_all_movies(user: schema.User, db: Session = Depends(get_db)):
+@app.get("/movies/{movie_id}")
+def get_movies(movie_id: int, db: Session = Depends(get_db)):
     movies = crud.get_movie(
         db,
-        user_id=user.id,
+        movie_id=movie_id,
     )
     return {'message': 'success', 'data': movies}
 
@@ -87,6 +86,34 @@ def create_movie(payload: schema.MovieCreate, user: schema.User = Depends(get_cu
     )
     return {'message': 'success'}
 
+@app.put('/movie/{movie_id}')
+def update_movie(movie_id: int, payload: schema.MovieUpdate, user: schema.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    movie = crud.get_movie(db, movie_id)
+    current_user = user.id
+    if not movie:
+        raise HTTPException(status_code=404, detail="movie not found")
+    if movie.user_id != current_user:
+        raise HTTPException(status_code=404, detail="this user is not allowed to edit this movie")
+    
+    updated_movie = crud.update_movie(db, movie_id, current_user, payload)
+    return {'message': 'success', 'data': updated_movie}
+
+@app.delete('/movie/{movie_id}')
+def delete_movie(
+    movie_id: int,
+    user: schema.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    movie = crud.get_movie(db, movie_id)
+    current_user = user.id
+    if not movie:
+        raise HTTPException(status_code=404, detail="movie not found")
+    if movie.user_id != current_user:
+        raise HTTPException(status_code=404, detail="this user is not allowed to edit this movie")
+    
+    deleted_movie = crud.delete_movie(db, movie_id, current_user)
+    
+    return {'message': "Movie deleted successfully", 'data': deleted_movie}
 
 @app.post('/rating')
 def rate_movie(payload: schema.RatingCreate, user: schema.User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -121,9 +148,3 @@ def movie_nested_comment(parent_id: int, comment: schema.CommentNested, user: sc
     return {'message': 'success', 'comment': new_comment}
 
 
-# @app.get('/comments/{post_id}')
-# def get_comments(post_id: int, db: Session = Depends(get_db)):
-#     comments = crud.get_movie_posts(db, post_id)
-#     for comment in comments:
-#         comment.children = crud.get_comments_children(db, comment.id)
-#     return comments

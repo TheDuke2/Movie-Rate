@@ -132,6 +132,7 @@ venv.bak/
 
 # Migrations
 alembic/
+.ini
 
 # Spyder project settings
 .spyderproject
