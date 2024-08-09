@@ -2,10 +2,9 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from auth import pwd_context, authenticate_user, create_access_token, get_current_user
-import  crud
-import schema
-from database import engine, Base, get_db
+from app.auth import pwd_context, authenticate_user, create_access_token, get_current_user
+from app import  crud, schema
+from app.database import engine, Base, get_db
 from typing import Optional
 
 Base.metadata.create_all(bind=engine)
@@ -143,7 +142,6 @@ def movie_nested_comment(parent_id: int, comment: schema.CommentNested, user: sc
         comment,
         user_id=user.id,
         movie_id=comment.movie_id,
-        # parent_id=parent_id
     )
     return {'message': 'success', 'comment': new_comment}
 
