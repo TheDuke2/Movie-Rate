@@ -1,14 +1,8 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, Table
 from sqlalchemy.orm import relationship
 
-from database import Base
+from app.database import Base
 
-
-# movie_rating_relationship = Table(
-#     "movie_rating", Base.metadata, 
-#     Column('movie_id', Integer, ForeignKey("movies.id"),primary_key=True),
-#     Column('rating_id', Integer, ForeignKey("ratings.id"),primary_key=True)
-# )
 
 class User(Base):
     __tablename__ = "users"

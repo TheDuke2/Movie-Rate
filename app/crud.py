@@ -4,12 +4,11 @@ from sqlalchemy import func
 
 from collections import defaultdict
 
-import models 
-import schema
-
+from app import models, schema
+from app.models import User
 
 def create_user(db: Session, user: schema.UserCreate, hashed_password: str):
-    db_user = models.User(
+    db_user = User(
         username=user.username,
         full_name=user.full_name,
         hashed_password=hashed_password
