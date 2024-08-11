@@ -11,8 +11,10 @@ from dotenv import load_dotenv
 
 from app import crud
 from app.database import SessionLocal, get_db
+from logger import get_logger
 
 load_dotenv()
+logger = get_logger(__name__)
 
 SECRET_KEY = os.environ.get('SECRET_KEY')  # Change this in production
 ALGORITHM = os.environ.get('ALGORITHM')

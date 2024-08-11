@@ -7,6 +7,9 @@ from app import  crud, schema
 from app.database import engine, Base, get_db
 from typing import Optional
 
+from logger import get_logger
+
+logger = get_logger(__name__)
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -22,6 +25,7 @@ def signup(user: schema.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_username(db, username=user.username)
     hashed_password = pwd_context.hash(user.password)
     if db_user:
+        logger.info(f'User with {user.username} already registered.')
         raise HTTPException(
             status_code=400, detail="Username already registered")
     return crud.create_user(db=db, user=user, hashed_password=hashed_password)
@@ -31,6 +35,7 @@ def signup(user: schema.UserCreate, db: Session = Depends(get_db)):
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
+        logger.info('Incorrect username or password'),
         raise HTTPException(
             status_code=401,
             detail="Incorrect username or password",
@@ -83,6 +88,7 @@ def create_movie(payload: schema.MovieCreate, user: schema.User = Depends(get_cu
         payload,
         user_id=user.id
     )
+    logger.info('Movie Created Successfully'),
     return {'message': 'success'}
 
 @app.put('/movie/{movie_id}')
@@ -90,8 +96,10 @@ def update_movie(movie_id: int, payload: schema.MovieUpdate, user: schema.User =
     movie = crud.get_movie(db, movie_id)
     current_user = user.id
     if not movie:
+        logger.info(f'Movie with {movie_id} does not exist.')
         raise HTTPException(status_code=404, detail="movie not found")
     if movie.user_id != current_user:
+        logger.info(f'User with {current_user} is not allowed to edit movie.') 
         raise HTTPException(status_code=404, detail="this user is not allowed to edit this movie")
     
     updated_movie = crud.update_movie(db, movie_id, current_user, payload)
@@ -106,20 +114,21 @@ def delete_movie(
     movie = crud.get_movie(db, movie_id)
     current_user = user.id
     if not movie:
+        logger.info(f'Movie with {movie_id} does not exist.')
         raise HTTPException(status_code=404, detail="movie not found")
     if movie.user_id != current_user:
+        logger.info(f'User with {current_user} is not allowed to delete movie.') 
         raise HTTPException(status_code=404, detail="this user is not allowed to edit this movie")
     
     deleted_movie = crud.delete_movie(db, movie_id, current_user)
     
-    return {'message': "Movie deleted successfully", 'data': deleted_movie}
+    return {'message': "Movie deleted successfully"}
 
 @app.post('/rating')
 def rate_movie(payload: schema.RatingCreate, user: schema.User = Depends(get_current_user), db: Session = Depends(get_db)):
     crud.rate_movie(
         db,
         payload
-        # user_id=user.id
     )
     return {'message': 'success'}
 
