@@ -6,6 +6,9 @@ from collections import defaultdict
 
 from app import models, schema
 from app.models import User
+from logger import get_logger
+
+logger = get_logger(__name__)
 
 def create_user(db: Session, user: schema.UserCreate, hashed_password: str):
     db_user = User(
@@ -63,8 +66,10 @@ def get_all_movie(db: Session, user_id: int = None, offset: int = 0, limit: int 
 def update_movie(db: Session, movie_id: int, user_id: int, movie_payload: schema.MovieUpdate):
     movie = get_movie(db, movie_id)
     if not movie:
+        logger.info(f'Movie with id {movie_id} was not found') 
         raise HTTPException(status_code=404, detail="Movie not found")
     if movie.user_id != user_id:
+        logger.info(f'User with id {user_id} was not found') 
         raise HTTPException(status_code=404, detail="user not found")
     
     payload_dict = movie_payload.dict(exclude_unset=True)
@@ -81,9 +86,11 @@ def update_movie(db: Session, movie_id: int, user_id: int, movie_payload: schema
 def delete_movie(db: Session, movie_id: int, user_id: int):
     movie = db.query(models.Movie).filter(models.Movie.id == movie_id).first()
     if not movie:
+        logger.info(f'Movie with id {movie_id} was not found') 
         raise HTTPException(status_code=404, detail="Movie not found")
     
     if movie.user_id != user_id:
+        logger.info(f'User with id {user_id} was not found') 
         raise HTTPException(status_code=403, detail="User not allowed to delete this movie")
     
     db.delete(movie)
@@ -97,7 +104,6 @@ def delete_movie(db: Session, movie_id: int, user_id: int):
 
 
 def get_rating(db: Session, movie_id: int):
-    # return db.query(models.Rating).filter(models.Rating.movie_id == movie_id).first()
     average_rating = db.query(func.avg(models.Rating.rating)).filter(
         models.Rating.movie_id == movie_id).scalar()
 
@@ -129,6 +135,7 @@ def create_nested_comments(db: Session, payload: schema.CommentNested, user_id: 
     if payload.parent_id is not None:
         parent_comment = db.query(models.Comment).filter(models.Comment.id == payload.parent_id).first()
     if parent_comment is None:
+        logger.info('Parent comment not found')
         raise HTTPException(status_code=400, detail="Parent comment not found")
     
     db_comments = models.Comment(
@@ -140,6 +147,7 @@ def create_nested_comments(db: Session, payload: schema.CommentNested, user_id: 
     db.add(db_comments)
     db.commit()
     db.refresh(db_comments)
+    logger.info('Comment created successfully.') 
     return db_comments
 
 
@@ -163,7 +171,5 @@ def get_comments(db: Session, movie_id: int):
             nested_comment.append(comment_dict)
         return nested_comment
     comment_tree = nested_comment_tree(None)
+    logger.info('Comment tree returned successfully.') 
     return comment_tree
-
-def get_comments_children(db: Session, comment_id: int):
-    return db.query(models.Comment).filter(models.Comment.parent_id == comment_id).all()

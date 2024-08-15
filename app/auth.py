@@ -11,15 +11,17 @@ from dotenv import load_dotenv
 
 from app import crud
 from app.database import SessionLocal, get_db
+from logger import get_logger
 
 load_dotenv()
+logger = get_logger(__name__)
 
 SECRET_KEY = os.environ.get('SECRET_KEY')  # Change this in production
 ALGORITHM = os.environ.get('ALGORITHM')
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get('ACCESS_TOKEN_EXPIRE_MINUTES'))
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
